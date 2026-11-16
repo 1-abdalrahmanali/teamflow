@@ -1,0 +1,12 @@
+{
+  "name": "teamflow-database-tests",
+  "private": true,
+  "type": "module",
+  "description": "Runs the TeamFlow migrations on an in-process Postgres (PGlite) and checks every permission rule.",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
+  }
+}

@@ -1,0 +1,56 @@
+/* Tablet and phone adjustments. Loaded last so it can override the layout files. */
+
+@media (max-width: 960px) {
+  .app { grid-template-columns: minmax(0, 1fr); background: none; }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    width: min(var(--sidebar-width), 84vw);
+    transform: translateX(-102%);
+    transition: transform 180ms ease;
+    box-shadow: var(--shadow-pop);
+  }
+  .app.is-nav-open .sidebar { transform: none; }
+  .nav-scrim { display: none; position: fixed; inset: 0; z-index: 40; background: rgba(29, 33, 48, 0.4); border: 0; }
+  .app.is-nav-open .nav-scrim { display: block; }
+
+  .menu-button { display: inline-flex; }
+  .topbar { padding: var(--s-3) var(--s-4); min-height: 64px; }
+  .page { padding: 0 var(--s-4) var(--s-7); }
+
+  .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .hero { grid-template-columns: minmax(0, 1fr); gap: var(--s-6); padding-top: var(--s-5); }
+  .promise { grid-template-columns: minmax(0, 1fr); gap: var(--s-5); }
+}
+
+@media (min-width: 961px) {
+  .nav-scrim { display: none; }
+}
+
+@media (max-width: 640px) {
+  h1 { font-size: var(--text-xl); }
+  .topbar { flex-wrap: wrap; }
+  .topbar-actions { width: 100%; justify-content: flex-start; }
+  .field-grid { grid-template-columns: minmax(0, 1fr); }
+  .steps { grid-template-columns: minmax(0, 1fr); gap: var(--s-5); }
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card-body, .card-pad { padding: var(--s-4); }
+  .card-head { padding: var(--s-3) var(--s-4); }
+  .task-row { padding: 12px var(--s-4); flex-wrap: wrap; }
+  .editor-host { height: 340px; }
+  .modal-scrim { padding-top: var(--s-4); }
+  .loop .note { margin-left: var(--s-3); }
+  .toast-stack { right: var(--s-4); left: var(--s-4); bottom: var(--s-4); max-width: none; }
+
+  /* Tables turn into stacked cards: each cell shows its own label. */
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table tr { padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--line); }
+  .table tr:last-child { border-bottom: 0; }
+  .table td { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 4px 0; border: 0; }
+  .table td::before { content: attr(data-label); flex: none; color: var(--ink-faint); font-size: var(--text-xs); }
+  .table td[data-label='']::before, .table td:not([data-label])::before { display: none; }
+  .table .cell-actions { justify-content: flex-start; text-align: left; }
+}

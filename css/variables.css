@@ -1,0 +1,76 @@
+/* TeamFlow design tokens.
+   Indigo for action, a quiet neutral page, and one warm exception:
+   reviewer feedback is shown as a paper note, because it comes from a person. */
+
+:root {
+  /* ink and surfaces */
+  --ink: #1d2130;
+  --ink-soft: #4a5165;
+  --ink-faint: #7b8296;
+  --paper: #f4f5f7;
+  --card: #ffffff;
+  --line: #e2e5eb;
+  --line-strong: #cdd2dc;
+
+  /* action */
+  --indigo: #4338ca;
+  --indigo-deep: #3329a8;
+  --indigo-wash: #eceeff;
+
+  /* the feedback note */
+  --note: #fff3c4;
+  --note-edge: #e9c85a;
+  --note-ink: #5e4500;
+
+  /* meaning */
+  --green: #1a7f4b;
+  --green-wash: #e2f4ea;
+  --amber: #a86200;
+  --amber-wash: #fff1d6;
+  --red: #c0362c;
+  --red-wash: #fdebe9;
+  --slate-wash: #eceef2;
+
+  /* avatar hues, picked per person from their name */
+  --hue-1: #5b54d6;
+  --hue-2: #0f8a7e;
+  --hue-3: #c2572b;
+  --hue-4: #a23c8f;
+  --hue-5: #2b6fc2;
+  --hue-6: #5d7a1f;
+
+  /* type */
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Instrument Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-code: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-hero: clamp(2.25rem, 5vw, 3.5rem);
+
+  /* space */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 72px;
+
+  /* shape: smaller things are tighter, larger things are softer */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(29, 33, 48, 0.06);
+  --shadow-pop: 0 14px 36px -10px rgba(29, 33, 48, 0.28);
+  --focus-ring: 0 0 0 3px rgba(67, 56, 202, 0.28);
+
+  --sidebar-width: 248px;
+  --content-width: 1120px;
+}

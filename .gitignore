@@ -1,0 +1,10 @@
+node_modules/
+supabase/.temp/
+supabase/.branches/
+.env
+.env.*
+tests/e2e/screenshots/
+__pycache__/
+.DS_Store
+Thumbs.db
+.vscode/
