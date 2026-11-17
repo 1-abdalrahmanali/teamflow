@@ -1,5 +1,6 @@
 // register.html. Every new account is a member; administrators are promoted by hand.
-import { getCurrentProfile, signUp } from '../auth/auth.js';
+import { signUp } from '../auth/auth.js';
+import { loadAccess } from '../auth/access.js';
 import { $, formValues, html, render, setBusy } from '../utils/dom.js';
 import { param, url } from '../utils/paths.js';
 import { MIN_PASSWORD_LENGTH } from '../utils/constants.js';
@@ -56,7 +57,7 @@ if (ready) {
       const next = recallInvitation() ? url('accept-invitation.html') : param('next');
       const { needsConfirmation } = await signUp({ fullName, email, password, next });
       if (!needsConfirmation) {
-        window.location.replace(destinationFor(await getCurrentProfile({ fresh: true })));
+        window.location.replace(destinationFor(await loadAccess({ fresh: true })));
         return;
       }
       render(

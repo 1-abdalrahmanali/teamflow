@@ -1,7 +1,8 @@
 // index.html: what TeamFlow is, shown through the thing it does (the review loop).
 import { isConfigured } from '../config/supabase.js';
-import { getCurrentProfile, getSession } from '../auth/auth.js';
-import { homeFor } from '../auth/guard.js';
+import { getSession } from '../auth/auth.js';
+import { loadAccess } from '../auth/access.js';
+import { homeFor } from '../auth/guards.js';
 import { $, html, icon, render } from '../utils/dom.js';
 import { url } from '../utils/paths.js';
 import { brand } from '../components/layout.js';
@@ -9,7 +10,7 @@ import { brand } from '../components/layout.js';
 async function signedInProfile() {
   if (!isConfigured) return null;
   try {
-    return (await getSession()) ? await getCurrentProfile() : null;
+    return (await getSession()) ? await loadAccess() : null;
   } catch {
     return null;
   }
@@ -33,7 +34,7 @@ render(
       <section class="hero">
         <div>
           <h1>Hand out coding tasks. Review every version. Approve when it is right.</h1>
-          <p class="hero-lede">TeamFlow keeps each project's tasks, code submissions and review notes together,
+          <p class="hero-lede">TeamFlow keeps each project's tasks, learning material, submissions and review notes together,
             so nobody has to ask which version was the final one.</p>
           <div class="hero-actions">
             ${profile
@@ -76,15 +77,15 @@ render(
           <div class="steps">
             <div class="step">
               <h3>Open a project and invite people</h3>
-              <p>Create a link for each person and send it however you like. It works once, for their email only.</p>
+              <p>Each person gets an emailed link that works once, for their address only, and lasts seven days.</p>
             </div>
             <div class="step">
-              <h3>Assign the work</h3>
-              <p>Write what needs doing, set a deadline and choose how it is handed in: code, text, a GitHub link or a file.</p>
+              <h3>Plan the work</h3>
+              <p>Write the task, attach videos, docs and starter files, set a deadline in the team's time zone, and say which tasks must finish first.</p>
             </div>
             <div class="step">
-              <h3>Review, then approve</h3>
-              <p>Read each version, leave a note when it needs changes, and approve it when it is done.</p>
+              <h3>Review, score, approve</h3>
+              <p>Read each version, send it back with notes, or approve it with a score from 0 to 100.</p>
             </div>
           </div>
         </div>
@@ -97,10 +98,10 @@ render(
             not just hidden in the interface.</p>
         </div>
         <ul>
-          <li>${icon('circle-check')}<span>A task is only completed when its project owner approves a submission.</span></li>
-          <li>${icon('circle-check')}<span>Every version is kept. Nothing is overwritten, so the history is always there.</span></li>
+          <li>${icon('circle-check')}<span>A task is only completed when a Team Leader or Platform Admin approves it.</span></li>
+          <li>${icon('circle-check')}<span>Nobody reviews their own work, and private reviewer notes never reach the member.</span></li>
+          <li>${icon('circle-check')}<span>Every version is kept, so the history is always there.</span></li>
           <li>${icon('circle-check')}<span>Members see their own tasks and nobody else's.</span></li>
-          <li>${icon('circle-check')}<span>One administrator cannot see another administrator's projects.</span></li>
           <li>${icon('circle-check')}<span>Submitted code is shown, never run.</span></li>
         </ul>
       </section>

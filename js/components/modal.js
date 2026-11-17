@@ -5,6 +5,8 @@ export function openModal({ title, body, wide = false, onMount }) {
   const previouslyFocused = document.activeElement;
   const scrim = document.createElement('div');
   scrim.className = 'modal-scrim';
+  // On the page before rendering, so the icons inside are drawn too.
+  document.body.append(scrim);
   render(
     scrim,
     html`<div class="modal ${wide ? 'modal-wide' : ''}" role="dialog" aria-modal="true" aria-label="${title}">
@@ -15,7 +17,6 @@ export function openModal({ title, body, wide = false, onMount }) {
       <div class="modal-body">${body}</div>
     </div>`,
   );
-  document.body.append(scrim);
   document.body.style.overflow = 'hidden';
 
   function close() {

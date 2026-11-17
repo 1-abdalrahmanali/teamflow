@@ -1,13 +1,13 @@
-// settings.html, shared by administrators and members.
+// app/settings.html: your profile, your roles and your password.
 import { updatePassword, updateProfile, uploadAvatar } from '../auth/auth.js';
 import { $, formValues, html, render, setBusy } from '../utils/dom.js';
 import { MIN_PASSWORD_LENGTH } from '../utils/constants.js';
 import { passwordProblem, showFormMessage } from '../utils/validate.js';
 import { mountApp } from '../components/layout.js';
-import { avatar } from '../components/ui.js';
+import { avatar, roleTag } from '../components/ui.js';
 import { toast, toastError } from '../components/toast.js';
 
-const { profile, page } = await mountApp({ area: 'shared', active: 'settings', title: 'Settings', subtitle: 'Your profile and password.' });
+const { access, profile, page } = await mountApp({ active: 'settings', title: 'Settings', subtitle: 'Your profile, your roles and your password.' });
 let current = profile;
 
 function draw() {
@@ -37,8 +37,15 @@ function draw() {
             <span class="field-hint">Your email is how invitations find you, so it cannot be changed here.</span>
           </label>
           <div class="field">
-            <span class="field-label">Role</span>
-            <p class="muted">${current.platform_role === 'administrator' ? 'Administrator: you can create projects and review work.' : 'Member: you work on tasks in the projects you join.'}</p>
+            <span class="field-label">Your roles</span>
+            <ul class="role-summary">
+              ${access.isAdmin ? html`<li>${roleTag('platform_admin')}<span class="small muted">You can manage every project and change roles.</span></li>` : ''}
+              ${access.memberships.map(
+                (m) => html`<li>${roleTag(m.role)}<span class="small muted">in ${m.project?.name || 'a project'}</span></li>`,
+              )}
+              ${!access.isAdmin && !access.memberships.length ? html`<li class="small muted">You are not in a project yet. Open an invitation link to join one.</li>` : ''}
+            </ul>
+            <span class="field-hint">Only a Platform Admin can change roles.</span>
           </div>
           <p class="form-message" id="profile-message" hidden style="margin-top:var(--s-4)"></p>
           <button class="btn" type="submit" style="margin-top:var(--s-5)">Save changes</button>

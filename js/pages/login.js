@@ -1,5 +1,6 @@
 // login.html
-import { getCurrentProfile, signIn } from '../auth/auth.js';
+import { signIn } from '../auth/auth.js';
+import { loadAccess } from '../auth/access.js';
 import { $, formValues, html, setBusy } from '../utils/dom.js';
 import { param, url } from '../utils/paths.js';
 import { isEmail, showFormMessage } from '../utils/validate.js';
@@ -51,8 +52,8 @@ if (ready) {
     showFormMessage(message, '');
     try {
       await signIn(email, password);
-      const profile = await getCurrentProfile({ fresh: true });
-      window.location.replace(destinationFor(profile));
+      const access = await loadAccess({ fresh: true });
+      window.location.replace(destinationFor(access));
     } catch (error) {
       showFormMessage(message, error.message);
       setBusy(button, false);

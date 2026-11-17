@@ -1,12 +1,17 @@
-// The create and edit project dialog.
+// The create and edit project dialog. Deadlines in a project follow its time zone.
 import { createProject, updateProject } from '../projects/projects.js';
 import { formValues, html, setBusy } from '../utils/dom.js';
+import { allTimeZones, browserTimeZone } from '../utils/time.js';
 import { showFormMessage } from '../utils/validate.js';
 import { openModal } from './modal.js';
 import { flashNext, toast } from './toast.js';
 
 export function openProjectDialog({ project = null, onSaved } = {}) {
   const editing = Boolean(project);
+  const zone = project?.timezone || browserTimeZone();
+  const zones = allTimeZones();
+  if (!zones.includes(zone)) zones.unshift(zone);
+
   openModal({
     title: editing ? 'Edit project' : 'New project',
     body: html`<form novalidate>
@@ -19,6 +24,13 @@ export function openProjectDialog({ project = null, onSaved } = {}) {
         <span class="field-label">What is it about? <span class="faint">(optional)</span></span>
         <textarea class="textarea" name="description" maxlength="2000"
           placeholder="A sentence or two so members know what they are joining.">${project?.description || ''}</textarea>
+      </label>
+      <label class="field">
+        <span class="field-label">Time zone</span>
+        <select class="select" name="timezone">
+          ${zones.map((z) => html`<option value="${z}" ${z === zone ? html`selected` : ''}>${z.replace(/_/g, ' ')}</option>`)}
+        </select>
+        <span class="field-hint">Deadlines are set and shown in this time zone, wherever each person is.</span>
       </label>
       <p class="form-message" data-message hidden style="margin-top:var(--s-4)"></p>
       <div class="row" style="justify-content:flex-end;margin-top:var(--s-5)">
@@ -41,9 +53,8 @@ export function openProjectDialog({ project = null, onSaved } = {}) {
         const button = form.querySelector('[type="submit"]');
         setBusy(button, true);
         try {
-          const saved = editing
-            ? await updateProject(project.id, { name: values.name, description: values.description })
-            : await createProject({ name: values.name, description: values.description });
+          const fields = { name: values.name, description: values.description, timezone: values.timezone };
+          const saved = editing ? await updateProject(project.id, fields) : await createProject(fields);
           close();
           if (editing) toast('Project saved');
           else flashNext('Project created');

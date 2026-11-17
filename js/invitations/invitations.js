@@ -1,7 +1,9 @@
-// Invitation data. The database creates the secret token and returns it once;
-// the administrator copies the link and sends it personally.
+// Invitations. The send-invitation Edge Function creates the invitation as the
+// signed-in person and emails the link through Resend. If the function is not
+// deployed or cannot be reached, the app creates the invitation directly and shows
+// the link to copy, so inviting never depends on email being set up.
 import { supabase } from '../config/supabase.js';
-import { unwrap } from '../utils/errors.js';
+import { AppError, friendly, unwrap } from '../utils/errors.js';
 import { url } from '../utils/paths.js';
 
 const COLUMNS = 'id, project_id, email, status, expires_at, created_at, invited_by';
@@ -10,7 +12,7 @@ const REMEMBER_KEY = 'teamflow.invitation';
 export async function listInvitations(projectId) {
   let query = supabase
     .from('invitations')
-    .select(`${COLUMNS}, project:projects(id, name)`)
+    .select(`${COLUMNS}, project:projects(id, name, status), inviter:profiles!invitations_invited_by_fkey(id, full_name, avatar_url)`)
     .order('created_at', { ascending: false });
   if (projectId) query = query.eq('project_id', projectId);
   return unwrap(await query);
@@ -26,9 +28,60 @@ export function invitationLink(token) {
   return `${url('accept-invitation.html')}#token=${encodeURIComponent(token)}`;
 }
 
-export async function createInvitation(projectId, email) {
-  const result = unwrap(await supabase.rpc('create_invitation', { p_project_id: projectId, p_email: email }));
-  return { ...result, link: invitationLink(result.token) };
+// What the function says when it refused the request on purpose (a 4xx with a message).
+async function functionRefusal(error) {
+  const response = error?.context;
+  if (!response || typeof response.status !== 'number') return null;
+  if (response.status < 400 || response.status >= 500 || response.status === 404) return null;
+  try {
+    const body = await response.clone().json();
+    // The gateway's own "Invalid JWT" means the function is set up wrongly, not that the person was refused.
+    if (body?.error && !/invalid jwt/i.test(body.error)) return body.error;
+    if (body?.message && !/invalid jwt/i.test(body.message)) return body.message;
+  } catch {
+    // Not JSON: treat it as unreachable.
+  }
+  return null;
+}
+
+async function callFunction(body) {
+  try {
+    const { data, error } = await supabase.functions.invoke('send-invitation', { body });
+    if (!error) return { ok: true, data };
+    const refusal = await functionRefusal(error);
+    if (refusal) throw new AppError(friendly({ message: refusal }));
+    return { ok: false };
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    return { ok: false };
+  }
+}
+
+function withLink(result, viaEmail) {
+  return {
+    invitationId: result.invitation_id,
+    email: result.email,
+    expiresAt: result.expires_at,
+    link: invitationLink(result.token),
+    emailSent: Boolean(viaEmail && result.email_sent),
+    emailError: viaEmail ? result.email_error || null : 'Email is not available right now, so copy the link and send it yourself.',
+  };
+}
+
+// Returns { invitationId, email, expiresAt, link, emailSent, emailError }.
+export async function sendInvitation({ projectId, email }) {
+  const sent = await callFunction({ project_id: projectId, email });
+  if (sent.ok) return withLink(sent.data, true);
+  const created = unwrap(await supabase.rpc('create_invitation', { p_project_id: projectId, p_email: email }));
+  return withLink(created, false);
+}
+
+// Withdraws the old link and sends a fresh one (a new 7-day window).
+export async function resendInvitation(invitationId) {
+  const sent = await callFunction({ resend_invitation_id: invitationId });
+  if (sent.ok) return withLink(sent.data, true);
+  const created = unwrap(await supabase.rpc('resend_invitation', { p_invitation_id: invitationId }));
+  return withLink(created, false);
 }
 
 export async function revokeInvitation(invitationId) {

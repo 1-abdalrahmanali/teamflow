@@ -1,6 +1,6 @@
-// Inviting someone: the database makes a one-time link, and the administrator
-// sends it personally (email, chat, whatever they use).
-import { createInvitation } from '../invitations/invitations.js';
+// Inviting someone. The invitation is emailed when email is set up; the link is
+// always shown too, once, so it can be sent another way if the email goes astray.
+import { resendInvitation, sendInvitation } from '../invitations/invitations.js';
 import { $, formValues, html, render, setBusy } from '../utils/dom.js';
 import { formatDate } from '../utils/format.js';
 import { isEmail, showFormMessage } from '../utils/validate.js';
@@ -8,7 +8,7 @@ import { copyText } from './code-editor.js';
 import { openModal } from './modal.js';
 import { toast } from './toast.js';
 
-// projects: the active projects the administrator owns. projectId preselects one.
+// projects: the active projects this person manages. projectId preselects one.
 export function openInviteDialog({ projects, projectId, onCreated } = {}) {
   const fixed = projects.length === 1 || Boolean(projectId);
   const chosen = projects.find((p) => p.id === projectId) || projects[0];
@@ -17,7 +17,7 @@ export function openInviteDialog({ projects, projectId, onCreated } = {}) {
     title: 'Invite someone',
     body: html`<form novalidate>
       ${fixed
-        ? html`<p class="muted" style="margin-bottom:var(--s-4)">They will join <strong>${chosen.name}</strong>.</p>
+        ? html`<p class="muted" style="margin-bottom:var(--s-4)">They will join <strong>${chosen.name}</strong> as a member.</p>
             <input type="hidden" name="project" value="${chosen.id}">`
         : html`<label class="field">
             <span class="field-label">Project</span>
@@ -28,12 +28,12 @@ export function openInviteDialog({ projects, projectId, onCreated } = {}) {
       <label class="field">
         <span class="field-label">Their email address</span>
         <input class="input" type="email" name="email" autocomplete="off" required autofocus placeholder="name@example.com">
-        <span class="field-hint">They must sign up or sign in with this exact address to join.</span>
+        <span class="field-hint">We email them a link. They must sign up or sign in with this exact address to join.</span>
       </label>
       <p class="form-message" data-message hidden style="margin-top:var(--s-4)"></p>
       <div class="row" style="justify-content:flex-end;margin-top:var(--s-5)">
         <button class="btn btn-quiet" type="button" data-close>Cancel</button>
-        <button class="btn" type="submit">Create invitation link</button>
+        <button class="btn" type="submit">${html`<i data-lucide="send"></i>`}Send invitation</button>
       </div>
     </form>`,
     onMount(modal, close) {
@@ -51,9 +51,9 @@ export function openInviteDialog({ projects, projectId, onCreated } = {}) {
         const button = $('[type="submit"]', form);
         setBusy(button, true);
         try {
-          const invitation = await createInvitation(values.project, values.email);
+          const invitation = await sendInvitation({ projectId: values.project, email: values.email.toLowerCase() });
           const project = projects.find((p) => p.id === values.project);
-          showLink($('.modal-body', modal), { invitation, project, close });
+          showResult($('.modal-body', modal), { invitation, project, close });
           onCreated?.(invitation);
         } catch (error) {
           showFormMessage(message, error.message);
@@ -64,18 +64,35 @@ export function openInviteDialog({ projects, projectId, onCreated } = {}) {
   });
 }
 
-function showLink(body, { invitation, project, close }) {
-  const note = `Hi! I've added you to "${project?.name || 'our project'}" on TeamFlow. Open this link to join (it works once, until ${formatDate(invitation.expires_at)}):\n\n${invitation.link}\n\nUse ${invitation.email} when you sign up or sign in.`;
+// Sends a fresh link for an existing invitation and shows the result.
+export async function resendWithDialog(invitation, { onDone } = {}) {
+  const result = await resendInvitation(invitation.id);
+  openModal({
+    title: 'Invitation sent again',
+    body: html`<div></div>`,
+    onMount(modal, close) {
+      showResult($('.modal-body', modal), { invitation: result, project: invitation.project, close });
+    },
+  });
+  onDone?.(result);
+}
+
+function showResult(body, { invitation, project, close }) {
+  const note = `Hi! I've added you to "${project?.name || 'our project'}" on TeamFlow. Open this link to join (it works once, until ${formatDate(invitation.expiresAt)}):\n\n${invitation.link}\n\nUse ${invitation.email} when you sign up or sign in.`;
   render(
     body,
     html`<div class="stack">
-      <div class="form-message is-good">Invitation ready for <strong>${invitation.email}</strong>.</div>
-      <p class="muted small">Send this link yourself. It works once, only for that email, until
-        ${formatDate(invitation.expires_at)}. For safety it is shown only now: if it gets lost, revoke the
-        invitation and create a new one.</p>
+      ${invitation.emailSent
+        ? html`<div class="form-message is-good">Invitation emailed to <strong>${invitation.email}</strong>.</div>
+            <p class="muted small">The link works once, only for that address, until ${formatDate(invitation.expiresAt)}.
+              If the email does not arrive, copy the link below and send it yourself.</p>`
+        : html`<div class="form-message is-info">Invitation ready for <strong>${invitation.email}</strong>, but it was not emailed.</div>
+            <p class="muted small">${invitation.emailError || 'Copy the link and send it yourself.'} It works once, only for that
+              address, until ${formatDate(invitation.expiresAt)}.</p>`}
+      <p class="small faint">For safety the link is shown only now. If it gets lost, use Send again on the invitation.</p>
       <div class="link-box">
         <input class="input" readonly value="${invitation.link}" aria-label="Invitation link" data-link>
-        <button class="btn" type="button" data-copy="link"><i data-lucide="copy"></i>Copy link</button>
+        <button class="btn ${invitation.emailSent ? 'btn-quiet' : ''}" type="button" data-copy="link"><i data-lucide="copy"></i>Copy link</button>
       </div>
       <div class="row row-wrap" style="justify-content:space-between">
         <button class="btn btn-quiet" type="button" data-copy="message"><i data-lucide="message-square"></i>Copy a ready-made message</button>

@@ -1,4 +1,5 @@
-// Dates, names and small bits of wording.
+// Dates, names and small bits of wording. Deadlines, which follow the project's
+// time zone, live in time.js.
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const dateTimeFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -26,19 +27,6 @@ export function timeAgo(value) {
     if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
   }
   return 'just now';
-}
-
-// A deadline in words, with a tone the task rows use for colour.
-export function deadlineInfo(deadline, status) {
-  if (!deadline) return { label: 'No deadline', tone: '' };
-  const due = new Date(deadline);
-  if (status === 'completed') return { label: `Was due ${formatDate(due)}`, tone: '' };
-  const days = Math.ceil((due.getTime() - Date.now()) / 86400000);
-  if (days < 0) return { label: `Overdue since ${formatDate(due)}`, tone: 'late' };
-  if (days === 0) return { label: 'Due today', tone: 'soon' };
-  if (days === 1) return { label: 'Due tomorrow', tone: 'soon' };
-  if (days <= 3) return { label: `Due in ${days} days`, tone: 'soon' };
-  return { label: `Due ${formatDate(due)}`, tone: '' };
 }
 
 export function firstName(fullName) {
@@ -69,16 +57,13 @@ export function plural(count, word, pluralWord = `${word}s`) {
   return `${count} ${count === 1 ? word : pluralWord}`;
 }
 
-// For <input type="datetime-local">, which wants local time without a zone.
-export function toLocalInput(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return shifted.toISOString().slice(0, 16);
-}
-
 export function fileSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+export function truncate(text, length) {
+  const value = String(text || '');
+  return value.length > length ? `${value.slice(0, length - 1).trimEnd()}...` : value;
 }

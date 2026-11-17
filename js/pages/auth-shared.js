@@ -1,14 +1,14 @@
 // Shared by the sign-in, sign-up and password pages.
 import { isConfigured } from '../config/supabase.js';
-import { homeFor, defaultDestination, redirectIfSignedIn } from '../auth/guard.js';
+import { defaultDestination, redirectIfSignedIn } from '../auth/guards.js';
 import { $, html, render } from '../utils/dom.js';
 import { url } from '../utils/paths.js';
 import { brand, notConfigured } from '../components/layout.js';
 import { recallInvitation } from '../invitations/invitations.js';
 
 // Someone mid-invitation goes back to finish it; everyone else goes where they were headed.
-export function destinationFor(profile) {
-  return recallInvitation() ? url('accept-invitation.html') : defaultDestination(profile) || homeFor(profile);
+export function destinationFor(access) {
+  return recallInvitation() ? url('accept-invitation.html') : defaultDestination(access);
 }
 
 // Renders a centred card. Returns false (and renders the setup notice) when the app is not configured.

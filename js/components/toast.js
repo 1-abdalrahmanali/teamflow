@@ -15,8 +15,9 @@ export function toast(message, tone = 'good') {
   }
   const item = document.createElement('div');
   item.className = `toast is-${tone}`;
-  render(item, html`<i data-lucide="${tone === 'error' ? 'circle-alert' : 'circle-check'}"></i><span>${message}</span>`);
+  // Added to the page first, so its icon is drawn along with it.
   stack.append(item);
+  render(item, html`<i data-lucide="${tone === 'error' ? 'circle-alert' : 'circle-check'}"></i><span>${message}</span>`);
   setTimeout(() => item.remove(), tone === 'error' ? 6500 : 3800);
 }
 

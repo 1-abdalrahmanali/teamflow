@@ -13,10 +13,6 @@ export function passwordProblem(password) {
   return null;
 }
 
-export function isGithubUrl(value) {
-  return /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/\S*)?$/.test(String(value || '').trim());
-}
-
 // Shows or clears one message area for a form.
 export function showFormMessage(element, message, tone = 'error') {
   if (!element) return;

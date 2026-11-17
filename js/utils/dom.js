@@ -36,8 +36,23 @@ export function html(strings, ...values) {
 
 export function render(target, content) {
   target.innerHTML = toHtml(content);
+  labelTableCells(target);
   refreshIcons();
   return target;
+}
+
+// On phones, tables turn into stacked cards; each cell shows its column name,
+// copied here from the table head.
+function labelTableCells(root) {
+  for (const table of root.querySelectorAll('table')) {
+    const heads = [...table.querySelectorAll('thead th')].map((th) => (th.querySelector('.sr-only') ? '' : th.textContent.trim()));
+    if (!heads.length) continue;
+    for (const row of table.querySelectorAll('tbody tr')) {
+      [...row.children].forEach((cell, index) => {
+        if (!cell.hasAttribute('data-label')) cell.setAttribute('data-label', heads[index] || '');
+      });
+    }
+  }
 }
 
 // Turns <i data-lucide="name"> placeholders into Lucide SVG icons.

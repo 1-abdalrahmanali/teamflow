@@ -1,105 +1,116 @@
-// admin/invitations.html: every invitation across the administrator's projects.
-import { effectiveStatus, listInvitations, revokeInvitation } from '../invitations/invitations.js';
-import { html, icon, on, render } from '../utils/dom.js';
-import { formatDate, timeAgo } from '../utils/format.js';
+// app/admin/invitations.html: every invitation on the platform. Platform Admins can
+// invite to any active project, send a link again or withdraw it.
 import { mountApp } from '../components/layout.js';
-import { emptyState, invitationStatus, loading } from '../components/ui.js';
+import { openInviteDialog, resendWithDialog } from '../components/invite-dialog.js';
 import { confirmDialog } from '../components/modal.js';
 import { toast, toastError } from '../components/toast.js';
-import { openInviteDialog } from '../components/invite-dialog.js';
-import { ownedProjects, projectHref } from './admin-shared.js';
+import { emptyState, invitationStatus, withLoading } from '../components/ui.js';
+import { effectiveStatus, listInvitations, revokeInvitation } from '../invitations/invitations.js';
+import { listProjects } from '../projects/projects.js';
+import { html, icon, on, render, setBusy } from '../utils/dom.js';
+import { formatDate, formatDateTime, timeAgo } from '../utils/format.js';
+import { url } from '../utils/paths.js';
 
-const { profile, page, actions } = await mountApp({
-  area: 'admin',
+const { page, actions } = await mountApp({
   active: 'invitations',
   title: 'Invitations',
-  subtitle: 'Links you have created. Each one works once, for one email, for 7 days.',
+  subtitle: 'Links work once, for one email address, for seven days.',
+  need: 'admin',
 });
 
-let projects = [];
-let invitations = [];
-let filter = 'pending';
+const FILTERS = [
+  ['pending', 'Pending'],
+  ['accepted', 'Accepted'],
+  ['expired', 'Expired'],
+  ['revoked', 'Withdrawn'],
+  ['all', 'All'],
+];
+let current = 'pending';
+let list = [];
 
-async function load() {
-  projects = await ownedProjects(profile);
-  invitations = (await listInvitations()).filter((i) => projects.some((p) => p.id === i.project_id));
-}
-
-function draw() {
-  const active = projects.filter((p) => p.status === 'active');
-  render(actions, active.length ? html`<button class="btn" type="button" data-action="invite">${icon('user-plus')}Invite someone</button>` : '');
-
-  const shown = invitations.filter((i) => filter === 'all' || effectiveStatus(i) === filter);
-  const tab = (key, label) => html`<button class="tab" role="tab" type="button" data-filter="${key}" aria-selected="${filter === key}">${label}<span class="count">${
-    key === 'all' ? invitations.length : invitations.filter((i) => effectiveStatus(i) === key).length
-  }</span></button>`;
-
-  render(
+async function draw() {
+  await withLoading(
     page,
-    html`<div class="tabs" role="tablist">${tab('pending', 'Pending')}${tab('accepted', 'Accepted')}${tab('expired', 'Expired')}${tab('revoked', 'Revoked')}${tab('all', 'All')}</div>
-    ${shown.length
-      ? html`<section class="card"><div class="table-wrap"><table class="table">
-          <thead><tr><th>Email</th><th>Project</th><th>Status</th><th>Sent</th><th>Expires</th><th></th></tr></thead>
-          <tbody>${shown.map((i) => {
-            const status = effectiveStatus(i);
-            return html`<tr>
-              <td data-label="Email" class="strong">${i.email}</td>
-              <td data-label="Project"><a href="${projectHref(i.project, 'members')}">${i.project?.name}</a></td>
-              <td data-label="Status">${invitationStatus(status)}</td>
-              <td data-label="Sent">${timeAgo(i.created_at)}</td>
-              <td data-label="Expires">${status === 'pending' ? formatDate(i.expires_at) : ''}</td>
-              <td class="cell-actions" data-label="">${status === 'pending' ? html`<button class="btn btn-ghost btn-sm" type="button" data-revoke="${i.id}">Revoke</button>` : ''}</td>
-            </tr>`;
-          })}</tbody>
-        </table></div></section>`
-      : html`<div class="card">${emptyState({
-          iconName: 'mail',
-          title: filter === 'pending' ? 'No invitations waiting' : 'Nothing here',
-          body: active.length ? 'Invite someone to a project and send them the link it gives you.' : 'Create a project first, then invite people to it.',
-          action: active.length && filter === 'pending' ? html`<button class="btn" type="button" data-action="invite">${icon('user-plus')}Invite someone</button>` : '',
-        })}</div>`}`,
+    () => Promise.all([listInvitations(), listProjects()]),
+    ([invitations, projects]) => {
+      list = invitations;
+      const active = projects.filter((p) => p.status === 'active');
+      render(
+        actions,
+        active.length ? html`<button class="btn" type="button" id="invite">${icon('user-plus')}Invite someone</button>` : '',
+      );
+      actions.querySelector('#invite')?.addEventListener('click', () => openInviteDialog({ projects: active, onCreated: () => draw() }));
+      paint();
+    },
   );
 }
 
-async function refresh() {
-  try {
-    await load();
-    draw();
-  } catch (error) {
-    toastError(error);
-  }
+function paint() {
+  const shown = list.filter((inv) => current === 'all' || effectiveStatus(inv) === current);
+  render(
+    page,
+    html`<div class="tabs" role="tablist" aria-label="Filter invitations">${FILTERS.map(([key, label]) => {
+        const count = key === 'all' ? list.length : list.filter((inv) => effectiveStatus(inv) === key).length;
+        return html`<button class="tab" type="button" role="tab" data-filter="${key}" aria-selected="${String(key === current)}">${label}<span class="tab-count">${count}</span></button>`;
+      })}</div>
+      <section class="card">
+        ${shown.length
+          ? html`<div class="table-wrap"><table class="table">
+              <thead><tr><th>Email</th><th>Project</th><th>Status</th><th>Invited</th><th>Expires</th><th><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody>${shown.map((inv) => {
+                const status = effectiveStatus(inv);
+                const live = inv.project?.status === 'active';
+                return html`<tr data-id="${inv.id}">
+                  <td class="strong">${inv.email}</td>
+                  <td><a href="${url('app/project.html', { id: inv.project_id, tab: 'invitations' })}">${inv.project?.name || 'Project'}</a></td>
+                  <td>${invitationStatus(status)}</td>
+                  <td title="${formatDateTime(inv.created_at)}">${timeAgo(inv.created_at)}<div class="small faint">by ${inv.inviter?.full_name || 'someone'}</div></td>
+                  <td class="nowrap">${status === 'pending' ? formatDate(inv.expires_at) : html`<span class="faint">--</span>`}</td>
+                  <td><div class="row" style="justify-content:flex-end;gap:var(--s-1)">
+                    ${live && (status === 'pending' || status === 'expired') ? html`<button class="btn btn-ghost btn-sm" type="button" data-act="resend">${icon('send')}Send again</button>` : ''}
+                    ${live && status === 'pending' ? html`<button class="btn btn-ghost btn-sm" type="button" data-act="revoke">Withdraw</button>` : ''}
+                  </div></td>
+                </tr>`;
+              })}</tbody></table></div>`
+          : emptyState({
+              iconName: 'mail',
+              title: current === 'pending' ? 'No pending invitations' : 'Nothing here',
+              body: current === 'pending' ? 'Invite someone to a project and the invitation shows here until they accept.' : 'Try another filter.',
+            })}
+      </section>`,
+  );
 }
 
-on(document, 'click', '[data-action="invite"]', () =>
-  openInviteDialog({ projects: projects.filter((p) => p.status === 'active'), onCreated: refresh }),
-);
 on(page, 'click', '[data-filter]', (event, button) => {
-  filter = button.dataset.filter;
-  draw();
+  current = button.dataset.filter;
+  paint();
 });
-on(page, 'click', '[data-revoke]', async (event, button) => {
-  const invitation = invitations.find((i) => i.id === button.dataset.revoke);
-  const ok = await confirmDialog({
-    title: 'Revoke this invitation?',
-    body: `The link sent to ${invitation.email} will stop working. You can invite them again afterwards.`,
-    confirmLabel: 'Revoke invitation',
-    danger: true,
-  });
-  if (!ok) return;
+
+on(page, 'click', '[data-act]', async (event, button) => {
+  const invitation = list.find((inv) => inv.id === button.closest('[data-id]').dataset.id);
+  if (!invitation) return;
+  if (button.dataset.act === 'revoke') {
+    const yes = await confirmDialog({
+      title: `Withdraw the invitation for ${invitation.email}?`,
+      body: 'The link stops working straight away. You can invite them again later.',
+      confirmLabel: 'Withdraw',
+      danger: true,
+    });
+    if (!yes) return;
+  }
+  setBusy(button, true);
   try {
-    await revokeInvitation(invitation.id);
-    toast('Invitation revoked');
-    await refresh();
+    if (button.dataset.act === 'revoke') {
+      await revokeInvitation(invitation.id);
+      toast('Invitation withdrawn');
+    } else {
+      await resendWithDialog(invitation);
+    }
+    await draw();
   } catch (error) {
     toastError(error);
+    setBusy(button, false);
   }
 });
 
-render(page, loading(5));
-try {
-  await load();
-  draw();
-} catch (error) {
-  toastError(error);
-  render(page, html`<p class="form-message is-error">${error.message}</p>`);
-}
+await draw();

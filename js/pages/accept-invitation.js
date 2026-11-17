@@ -2,6 +2,7 @@
 // The token arrives in the URL fragment, which is never sent to a server. It is
 // kept in this browser while the person signs in or signs up, then used once.
 import { getCurrentProfile, getSession, signOut } from '../auth/auth.js';
+import { forgetAccess } from '../auth/access.js';
 import { $, html, setBusy } from '../utils/dom.js';
 import { formatDate } from '../utils/format.js';
 import { url } from '../utils/paths.js';
@@ -94,7 +95,8 @@ async function main() {
     try {
       const projectId = await acceptInvitation(token);
       forgetInvitation();
-      window.location.replace(url('member/project-details.html', { id: projectId, joined: 1 }));
+      forgetAccess();
+      window.location.replace(url('app/project.html', { id: projectId, joined: 1 }));
     } catch (error) {
       const message = $('#form-message');
       message.hidden = false;

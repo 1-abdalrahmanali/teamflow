@@ -8,3 +8,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .vscode/
+tests/e2e/outbox.json
+tests/e2e/spec.pdf
+tests/e2e/logo.zip
