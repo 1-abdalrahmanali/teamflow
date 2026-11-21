@@ -100,6 +100,7 @@ await withLoading(page, load, (data) => {
           <span class="field-label">Assigned to</span>
           <select class="select" name="assigned_to">
             <option value="">Nobody yet</option>
+            ${!task ? html`<option value="__everyone__">Everyone in the project (one task each)</option>` : ''}
             ${people.map((m) => html`<option value="${m.user_id}" ${m.user_id === task?.assigned_to ? html`selected` : ''}>${m.user?.full_name || 'Former member'}${m.role === 'team_leader' ? ' (Team Leader)' : ''}</option>`)}
           </select>
           ${task && ['submitted', 'completed'].includes(task.status)
@@ -195,6 +196,27 @@ await withLoading(page, load, (data) => {
     if (!hasVersions) fields.submission_type = type;
 
     const button = $('[type="submit"]', form);
+
+    // "Everyone": one copy of the task for each member, with the same prerequisites.
+    if (values.assigned_to === '__everyone__') {
+      const members = people.filter((m) => m.role === 'member');
+      if (!members.length) return showFormMessage(message, 'There are no members in this project yet. Invite people first.');
+      const wanted = $$('input[name="deps"]:checked', form).map((box) => box.value);
+      setBusy(button, true);
+      try {
+        for (const m of members) {
+          const saved = await createTask({ ...fields, assigned_to: m.user_id, project_id: project.id });
+          for (const id of wanted) await addDependency(saved.id, id);
+        }
+        flashNext(`Task created for ${members.length} ${members.length === 1 ? 'person' : 'people'}`);
+        go('app/project.html', { id: project.id, tab: 'tasks' });
+      } catch (error) {
+        showFormMessage(message, error.message);
+        setBusy(button, false);
+      }
+      return;
+    }
+
     setBusy(button, true);
     showFormMessage(message, '');
     try {
